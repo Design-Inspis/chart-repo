@@ -1,4 +1,4 @@
-# Chart Module Distribution
+# Chart Module Distribution / CDN Source
 
 Drop-in bundle & datasets for WordPress theme or plugin integration. Replace the files here to ship updates—no PHP or block edits needed after initial setup.
 
@@ -14,12 +14,14 @@ Drop-in bundle & datasets for WordPress theme or plugin integration. Replace the
 4. Add a container `<div id="chart-root"></div>` (or custom selector) in your template / block output.
 5. Call `window.ChartModule.mount({ selector: '#chart-root' })` after the script loads.
 
-## Release Workflow
-1. Run build in source project: `npm run build`.
-2. Copy fresh `chart-module.iife.js` into this distribution folder.
-3. Update `chart-data.json` (and CSV fallback) if metrics changed.
-4. Bump version (query param or filename) & clear caches (object cache / CDN / OPCache if necessary).
-5. Test mount + chart rendering in a staging site.
+## Automated Builder Workflow
+This repository is populated by the sibling builder project `wp-react-chart-module-starter` which:
+1. Fetches upstream data sources (`npm run fetch:datasets`).
+2. Builds the React/Chart.js bundle (`npm run build`).
+3. Publishes bundle + dataset artifacts here (`npm run publish:dist`) and injects SRI hashes into integration docs.
+4. (Optionally) Tags releases & pushes updates on a schedule (GitHub Actions cron / Netlify).
+
+Manual edits to dataset files are not required; the builder overwrites `chart-data.*` each run. Treat this repo as a read-only CDN source for consumers.
 
 ## Global API
 ```js
@@ -33,11 +35,46 @@ window.ChartModule.unmount();
 All charts render automatically by scanning the container and ingesting data from JSON (or CSV fallback) once. Multiple charts are supported—each dataset row/object becomes a chart instance.
 
 ## Asset Resolution (Runtime)
-Resolution order when loading bundle + datasets:
-1. Theme directory (preferred for site-level override)
-2. Plugin directory
+Resolution precedence inside the loader:
+1. Global `window.ChartModuleData` (from `chart-data.min.js` or `chart-data.js`)
+2. `chart-data.json`
+3. `chart-data.csv`
+4. Manual props passed to `ChartModule.mount()` (labels/values) override all.
 
-If both JSON and CSV exist, JSON wins. If JSON missing and CSV present, CSV is parsed (labels split on `|`).
+If JSON exists it is preferred over CSV. CSV is parsed (labels split on `|`).
+
+## Architecture Overview
+### Optional Future SQL Sync
+The builder can push the same dataset rows into an external MySQL table using `scripts/export-to-sql.mjs` when DB_* secrets are provided (see workflow). This enables downstream apps to query charts dynamically without parsing files.
+
+Env variables required:
+- DB_HOST / DB_USER / DB_PASS / DB_NAME / DB_TABLE
+
+If not set, the export step is skipped safely.
+
+```
+      +--------------------------+          +-------------------+
+      |  External Data Sources   |  fetch   |  Builder Project  |
+      |  (APIs / raw JSON/CSV)  +---------->  wp-react-chart-   |
+      +--------------------------+          |  module-starter   |
+                     |  | build
+                     v  v
+                  +-------------------+
+                  |  chart-repo (CDN) |
+                  |  chart-module...  |
+                  |  chart-data.*     |
+                  +---------+---------+
+                    |
+                 jsDelivr / Raw GitHub
+                    |
+          +---------------+-------------+---------------+
+          |               |                             |
+         WordPress Theme   WordPress Plugin            Plain HTML App
+          |               |                             |
+        enqueue scripts   enqueue scripts                <script> tags
+          |               |                             |
+       window.ChartModule.mount(...) renders charts from dataset
+```
 
 ## Versioning / Cache Busting
 | Strategy | Pros | Cons |
@@ -48,11 +85,10 @@ If both JSON and CSV exist, JSON wins. If JSON missing and CSV present, CSV is p
 
 Recommended hybrid: keep canonical `chart-module.iife.js` (used by existing templates) and also publish a versioned copy for rollback tracking. In PHP enqueue, pass the semantic version as the `ver` argument.
 
-### Upgrade Checklist
-- [ ] Build new bundle
-- [ ] Update datasets
-- [ ] Increment version (semver + query param)
-- [ ] Purge CDN / object cache
+### Upgrade Checklist (Automated runs perform 1–3)
+- [ ] Builder run completed (fetch + build + publish)
+- [ ] Optional: Create git tag for release (`PUBLISH_TAG` or AUTO_TAG)
+- [ ] Purge third-party caches if self-hosting assets
 - [ ] Verify mount + charts on staging
 
 ## Legacy Notice
@@ -60,14 +96,21 @@ Legacy filename support removed—only `chart-module.iife.js` is used. Ensure al
 
 ## Integration Examples (Inline Quick Reference)
 
-### WordPress Theme (functions.php)
+### WordPress Theme (functions.php) – Using CDN + SRI
 ```php
 function my_theme_enqueue_charts() {
   wp_enqueue_script(
     'chart-module',
-    get_stylesheet_directory_uri() . '/chart-module.iife.js',
+    'https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js',
     [],
-    '1.2.0',
+    null,
+    true
+  );
+  wp_enqueue_script(
+    'chart-data',
+    'https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js',
+    ['chart-module'],
+    null,
     true
   );
 }
@@ -80,15 +123,10 @@ add_action('wp_enqueue_scripts', 'my_theme_enqueue_charts');
 </script>
 ```
 
-### Plugin Enqueue
+### Plugin Enqueue (CDN)
 ```php
-wp_enqueue_script(
-  'chart-module',
-  plugins_url('chart-repo/chart-module.iife.js', __FILE__),
-  [],
-  '1.2.0',
-  true
-);
+wp_enqueue_script('chart-module','https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js',[],null,true);
+wp_enqueue_script('chart-data','https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js',['chart-module'],null,true);
 ```
 
 ### Gutenberg Block (view script wrapper)
@@ -99,13 +137,12 @@ function render_chart_block($attrs) {
 }
 ```
 
-### Standalone HTML (non-WP)
+### Standalone HTML (non-WP) + SRI
 ```html
 <div id="chart-root"></div>
-<script src="./chart-module.iife.js"></script>
-<script>
-  window.ChartModule.mount({ selector: '#chart-root' });
-</script>
+<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js" integrity="{{SRI_MODULE}}" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js" integrity="{{SRI_DATA_MIN}}" crossorigin="anonymous"></script>
+<script>window.ChartModule.mount({ selector:'#chart-root' });</script>
 ```
 
 ### Multiple Containers

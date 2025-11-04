@@ -6,9 +6,11 @@ This guide shows how to embed `chart-module.iife.js` in different environments (
 
 ```html
 <div id="chart-root"></div>
-<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js"></script>
+<!-- Module + dataset (SRI hashes auto-injected) -->
+<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js" integrity="sha256-v2GB+ewovfk9gOteLOl6Er4G6ZwybC7/EhAo18C4jfw=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js" integrity="sha256-gC3daK6t5Q4VmdRdBFpNB+cwSfFRBRcRQQ3nLRWnkMw=" crossorigin="anonymous"></script>
 <script>
-  // Automatic dataset loading (chart-data.json / chart-data.csv in same directory)
+  // Automatic dataset loading (global ChartModuleData from chart-data.min.js OR chart-data.json / chart-data.csv fallback)
   window.ChartModule.mount({ selector: '#chart-root' });
 </script>
 ```
@@ -59,23 +61,25 @@ This guide shows how to embed `chart-module.iife.js` in different environments (
 If the dataset contains multiple charts, a single `mount` (without manual data) renders a responsive grid automatically.
 
 ## 4. Dataset Resolution
-Preferred (new): you can now load a pre-bundled JavaScript dataset file first (minified recommended in production):
+Preferred (module-first population): load the chart module first, then append the dataset script which triggers a refresh automatically. SRI hashes are auto‑injected by the builder:
 ```html
-<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js" integrity="<!-- fill from SRI-HASHES.md -->" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js"></script>
+<div id="chart-root"></div>
+<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js" integrity="sha256-v2GB+ewovfk9gOteLOl6Er4G6ZwybC7/EhAo18C4jfw=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js" integrity="sha256-gC3daK6t5Q4VmdRdBFpNB+cwSfFRBRcRQQ3nLRWnkMw=" crossorigin="anonymous"></script>
 <script>
-  // If chart-data.js defined window.ChartModuleData the module can be extended in future to use it directly.
   window.ChartModule.mount({ selector: '#chart-root' });
 </script>
 ```
-Current module version still fetches JSON/CSV; `chart-data.js` is provided for forward compatibility and alternative loaders. Keep `chart-data.json` present for automatic loading.
+The dataset script dispatches `ChartModuleDataReady` (or calls `ChartModule.refresh`) so charts mounted prior to its loading will repopulate automatically.
 
 Fallback resolution order (existing behavior):
-Resolution precedence now (from vNext loader update):
-1. `window.ChartModuleData.charts` (if `chart-data(.min).js` loaded and contains charts)
+Resolution precedence (module-first flow):
+1. `window.ChartModuleData.charts` (populated by `chart-data.min.js` or `chart-data.js`) – may arrive after initial mount, triggering auto refresh.
 2. `chart-data.json`
 3. `chart-data.csv`
 4. Manual props passed to `mount()` always override automatic detection if you supply `labels` & `values`.
+
+Event-based population: dataset scripts emit `ChartModuleDataReady` if the module wasn't loaded yet. The loader listens and re-renders all auto charts using the new global data.
 
 CSV format: `chartId,title,chartType,labels,values...` where `labels` are pipe-delimited (e.g. `Jan|Feb|Mar`).
 JSON structure example:
@@ -138,10 +142,19 @@ Operational tip: Always pair SRI with a pinned tag or commit. If you track a mov
 ## 7. WordPress Theme (functions.php)
 ```php
 function theme_enqueue_chart_module() {
+  // Module first
   wp_enqueue_script(
     'chart-module',
     'https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js',
     [],
+    null,
+    true
+  );
+  // Dataset second (depends on module for predictable order)
+  wp_enqueue_script(
+    'chart-data',
+    'https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js',
+    ['chart-module'],
     null,
     true
   );
@@ -159,7 +172,7 @@ In a template:
 ```
 
 ## 8. Gutenberg Editor
-If the plugin already enqueued the script for the editor: just add a Custom HTML block:
+If the plugin already enqueued module + dataset (module first): just add a Custom HTML block:
 ```html
 <div id="chart-editor-demo"></div>
 <script>

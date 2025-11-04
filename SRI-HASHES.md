@@ -1,8 +1,10 @@
 # SRI Hashes
 
-- chart-module.iife.js: `sha256-Ihxt6oGmSBVpPh/kG+MS5fDO7Q4t3gqoxMbFJa8MPAo=`
-- chart-data.json: `sha256-QuUeZ/ckT3MYSFzR6lu43iSW2jNSfwYamtwXFKJG6dA=`
+- chart-module.iife.js: `sha256-v2GB+ewovfk9gOteLOl6Er4G6ZwybC7/EhAo18C4jfw=`
+- chart-data.json: `sha256-LaehXpzofOY0fjKHRw6wABryYq6wSM2YlX4XBZXlMdw=`
 - chart-data.csv: `sha256-msgnmUhia7/KsGVjs7g5J6u/bloiRYgKalLVqhLuiJI=`
+- chart-data.js: `sha256-4BKbe2evg4fQFqI1S1EJ+9dUzDZNV4Z4YX1ASWIroqA=`
+- chart-data.min.js: `sha256-gC3daK6t5Q4VmdRdBFpNB+cwSfFRBRcRQQ3nLRWnkMw=`
 
 Use:
 ```html
