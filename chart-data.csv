@@ -1,4 +1,3 @@
-# Distribution CSV dataset (fallback if JSON missing)
 chartId,title,chartType,labels,values
 revenue_trend,Monthly Revenue (USD),line,Jan|Feb|Mar|Apr|May|Jun,12000,13500,12800,15000,17000,16500
 traffic_channels,Website Traffic by Channel,bar,Organic|Paid|Referral|Social|Email,4200,3100,1800,2600,900
