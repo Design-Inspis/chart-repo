@@ -1,4 +1,11 @@
-{
+/**
+ * Generated dataset bundle (do not edit manually)
+ * Source JSON: https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.json
+ * Source CSV: https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.csv
+ * Generated: 2025-11-04T15:27:21.945Z
+ */
+;(function(g){
+  g.ChartModuleData = {
   "generatedAt": "2025-11-04T15:27:21.945Z",
   "description": "Automated build dataset (merged from JSON + CSV sources)",
   "sourceMeta": {
@@ -86,4 +93,11 @@
       ]
     }
   ]
-}
+};
+  // Attempt immediate population if module already loaded; else emit readiness event
+  if (g.ChartModule && typeof g.ChartModule.refresh === 'function') {
+    try { g.ChartModule.refresh({ forceGlobalReload: true }); } catch(e) { /* ignore */ }
+  } else if (g.dispatchEvent) {
+    try { g.dispatchEvent(new CustomEvent('ChartModuleDataReady')); } catch(e) { /* ignore */ }
+  }
+})(typeof window!=="undefined"?window:globalThis);
