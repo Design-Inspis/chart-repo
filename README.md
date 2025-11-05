@@ -134,10 +134,23 @@ function render_chart_block($attrs) {
 ### Standalone HTML (non-WP) + SRI
 ```html
 <div id="chart-root"></div>
-<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js" integrity="{{SRI_MODULE}}" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js" integrity="{{SRI_DATA_MIN}}" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js" integrity="sha256-v2GB+ewovfk9gOteLOl6Er4G6ZwybC7/EhAo18C4jfw=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js" integrity="sha256-gC3daK6t5Q4VmdRdBFpNB+cwSfFRBRcRQQ3nLRWnkMw=" crossorigin="anonymous"></script>
 <script>window.ChartModule.mount({ selector:'#chart-root' });</script>
 ```
+
+### Current SRI Hashes
+| Asset | SRI (sha256) |
+|-------|--------------|
+| chart-module.iife.js | sha256-v2GB+ewovfk9gOteLOl6Er4G6ZwybC7/EhAo18C4jfw= |
+| chart-data.min.js    | sha256-gC3daK6t5Q4VmdRdBFpNB+cwSfFRBRcRQQ3nLRWnkMw= |
+
+If you pin to a commit/tag (e.g. `.../chart-repo@<commit>/chart-module.iife.js`) recompute hashes:
+```bash
+curl -s https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo@<commit>/chart-module.iife.js | openssl dgst -sha256 -binary | openssl base64 -A | sed 's/^/sha256-/'
+curl -s https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo@<commit>/chart-data.min.js    | openssl dgst -sha256 -binary | openssl base64 -A | sed 's/^/sha256-/'
+```
+Update the integrity attributes everywhere those assets are embedded.
 
 ### Multiple Containers
 Call `mount` once with a parent selector containing multiple `<canvas>` placeholders; module auto-renders all declared charts.
