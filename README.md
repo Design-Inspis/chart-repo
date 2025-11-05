@@ -94,50 +94,61 @@ Recommended hybrid: keep canonical `chart-module.iife.js` (used by existing temp
 ## Legacy Notice
 Legacy filename support removed—only `chart-module.iife.js` is used. Ensure all environments reference the new name.
 
-## Integration Examples (Inline Quick Reference)
+## Integration Examples (Quick Reference)
 
-### WordPress Plugin Enqueue (CDN + SRI via filter)
+Default examples below DO NOT use Subresource Integrity (SRI). This keeps initial integration simple. SRI is optional; see "Optional SRI / Pinning" further down.
+
+### WordPress Plugin Enqueue (basic CDN)
 ```php
-// Inside your plugin main file
 add_action('wp_enqueue_scripts', function() {
   wp_enqueue_script('rcm-iife','https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js',[],null,true);
   wp_enqueue_script('rcm-data','https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js',['rcm-iife'],null,true);
 });
-add_filter('script_loader_tag', function($tag,$handle,$src){
-  $map=[
-    'rcm-iife' => 'sha256-v2GB+ewovfk9gOteLOl6Er4G6ZwybC7/EhAo18C4jfw=',
-    'rcm-data' => 'sha256-gC3daK6t5Q4VmdRdBFpNB+cwSfFRBRcRQQ3nLRWnkMw=',
-  ];
-  if(!isset($map[$handle])||strpos($tag,' integrity=')!==false) return $tag;
-  return preg_replace('/<script(.*?)src=/','<script$1 integrity="'.esc_attr($map[$handle]).'" crossorigin="anonymous" src=',$tag,1);
-},10,3);
 ```
 ```html
 <div id="chart-root"></div>
 <script>window.ChartModule && window.ChartModule.mount({ selector: '#chart-root' });</script>
 ```
 
-### Plugin Enqueue (CDN)
+### Gutenberg Block (render callback)
 ```php
-wp_enqueue_script('chart-module','https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js',[],null,true);
-wp_enqueue_script('chart-data','https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js',['chart-module'],null,true);
-```
-
-### Gutenberg Block (view script wrapper)
-Inside block `render_callback` output container + rely on globally enqueued script.
-```php
-function render_chart_block($attrs) {
+function render_chart_block( $attrs ) {
   return '<div id="chart-root"></div>';
 }
 ```
 
-### Standalone HTML (non-WP) + SRI
+### Standalone HTML (no framework)
 ```html
 <div id="chart-root"></div>
-<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js" integrity="sha256-v2GB+ewovfk9gOteLOl6Er4G6ZwybC7/EhAo18C4jfw=" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js" integrity="sha256-gC3daK6t5Q4VmdRdBFpNB+cwSfFRBRcRQQ3nLRWnkMw=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js"></script>
 <script>window.ChartModule.mount({ selector:'#chart-root' });</script>
 ```
+
+### Optional SRI / Pinning
+Add integrity only after verifying a stable bundle (pin with `@<commit>` for deterministic bytes):
+```php
+add_action('wp_enqueue_scripts', function() {
+  wp_enqueue_script('rcm-iife','https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo@<commit>/chart-module.iife.js',[],null,true);
+  wp_enqueue_script('rcm-data','https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo@<commit>/chart-data.min.js',['rcm-iife'],null,true);
+});
+add_filter('script_loader_tag', function($tag,$handle){
+  $map=[
+    'rcm-iife' => 'sha256-v2GB+ewovfk9gOteLOl6Er4G6ZwybC7/EhAo18C4jfw=',
+    'rcm-data' => 'sha256-gC3daK6t5Q4VmdRdBFpNB+cwSfFRBRcRQQ3nLRWnkMw=',
+  ];
+  if(!isset($map[$handle])||str_contains($tag,' integrity=')) return $tag;
+  return preg_replace('/<script(.*?)src=/','<script$1 integrity="'.esc_attr($map[$handle]).'" crossorigin="anonymous" src=',$tag,1);
+},10,1);
+```
+Standalone with SRI (optional):
+```html
+<div id="chart-root"></div>
+<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo@<commit>/chart-module.iife.js" integrity="sha256-v2GB+ewovfk9gOteLOl6Er4G6ZwybC7/EhAo18C4jfw=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo@<commit>/chart-data.min.js" integrity="sha256-gC3daK6t5Q4VmdRdBFpNB+cwSfFRBRcRQQ3nLRWnkMw=" crossorigin="anonymous"></script>
+<script>window.ChartModule.mount({ selector:'#chart-root' });</script>
+```
+If hashes ever mismatch, remove integrity temporarily, verify content, then re‑pin and re‑insert updated hashes.
 
 <!-- SRI-TABLE-START -->
 ### Current SRI Hashes (2025-11-05)
