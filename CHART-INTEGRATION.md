@@ -1,6 +1,8 @@
 # Chart Module Integration Guide
 
-This guide shows how to embed `chart-module.iife.js` in different environments (plain HTML, WordPress theme, Gutenberg editor) via the public CDN.
+> Deprecation: Theme-based enqueue examples removed. Use the plugin (preferred) or plain HTML with CDN assets.
+
+This guide shows how to embed `chart-module.iife.js` in different environments (plain HTML, WordPress plugin, Gutenberg editor) via the public CDN.
 
 ## 1. Quick Embed (Plain HTML)
 
@@ -139,36 +141,25 @@ Security note: SRI hashes being public is expected – an attacker cannot *use* 
 
 Operational tip: Always pair SRI with a pinned tag or commit. If you track a moving branch (no @version) the hash will eventually mismatch and the script will stop loading.
 
-## 7. WordPress Theme (functions.php)
+## 7. WordPress Plugin Usage (preferred)
 ```php
-function theme_enqueue_chart_module() {
-  // Module first
-  wp_enqueue_script(
-    'chart-module',
-    'https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js',
-    [],
-    null,
-    true
-  );
-  // Dataset second (depends on module for predictable order)
-  wp_enqueue_script(
-    'chart-data',
-    'https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js',
-    ['chart-module'],
-    null,
-    true
-  );
-}
-add_action('wp_enqueue_scripts', 'theme_enqueue_chart_module');
+add_action('wp_enqueue_scripts', function() {
+  wp_enqueue_script('rcm-iife','https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js',[],null,true);
+  wp_enqueue_script('rcm-data','https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js',['rcm-iife'],null,true);
+});
+add_filter('script_loader_tag', function($tag,$handle,$src){
+  $map=[
+    'rcm-iife' => 'sha256-v2GB+ewovfk9gOteLOl6Er4G6ZwybC7/EhAo18C4jfw=',
+    'rcm-data' => 'sha256-gC3daK6t5Q4VmdRdBFpNB+cwSfFRBRcRQQ3nLRWnkMw=',
+  ];
+  if(!isset($map[$handle])||strpos($tag,' integrity=')!==false) return $tag;
+  return preg_replace('/<script(.*?)src=/','<script$1 integrity="'.esc_attr($map[$handle]).'" crossorigin="anonymous" src=',$tag,1);
+},10,3);
 ```
-In a template:
-```php
+In plugin-rendered output (or block template):
+```html
 <div id="chart-root"></div>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    window.ChartModule.mount({ selector: '#chart-root' });
-  });
-</script>
+<script>window.ChartModule.mount({ selector: '#chart-root' });</script>
 ```
 
 ## 8. Gutenberg Editor

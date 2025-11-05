@@ -1,18 +1,18 @@
 # Chart Module Distribution / CDN Source
 
-Drop-in bundle & datasets for WordPress theme or plugin integration. Replace the files here to ship updates—no PHP or block edits needed after initial setup.
+> Deprecation: Former WordPress theme copy/override workflow has been removed. Use the plugin (recommended) or generic HTML script tags with the CDN assets. Theme-based enqueue examples are no longer maintained.
+
+Drop-in bundle & datasets for portable WordPress plugin or generic HTML integration. Replace the files here to ship updates—no PHP or block edits needed after initial setup.
 
 ## Files
 - `chart-module.iife.js` – Global IIFE exposing `window.ChartModule.mount/unmount`.
 - `chart-data.json` – Primary multi-chart dataset (auto-loaded if present).
 - `chart-data.csv` – Fallback dataset (used only if JSON missing). Pipe `|` delimited labels.
 
-## Quick Start (Theme or Plugin)
-1. Copy this folder’s contents into your theme (e.g. `wp-content/themes/your-theme/`) or plugin asset directory.
-2. Enqueue the script (see examples below).
-3. Ensure dataset files sit in the same relative directory as the bundle.
-4. Add a container `<div id="chart-root"></div>` (or custom selector) in your template / block output.
-5. Call `window.ChartModule.mount({ selector: '#chart-root' })` after the script loads.
+## Quick Start (Plugin or Standalone HTML)
+1. Enqueue the CDN scripts (module first, dataset second) in your plugin.
+2. Add a container `<div id="chart-root"></div>` in your render output.
+3. Call `window.ChartModule.mount({ selector: '#chart-root' })` (or rely on Gutenberg block wrapper).
 
 ## Automated Builder Workflow
 This repository is populated by the sibling builder project `wp-react-chart-module-starter` which:
@@ -68,12 +68,12 @@ If not set, the export step is skipped safely.
                  jsDelivr / Raw GitHub
                     |
           +---------------+-------------+---------------+
-          |               |                             |
-         WordPress Theme   WordPress Plugin            Plain HTML App
-          |               |                             |
-        enqueue scripts   enqueue scripts                <script> tags
-          |               |                             |
-       window.ChartModule.mount(...) renders charts from dataset
+     |               |
+   WordPress Plugin      Plain HTML App
+     |               |
+    enqueue scripts       <script> tags
+     |               |
+   window.ChartModule.mount(...) renders charts from dataset
 ```
 
 ## Versioning / Cache Busting
@@ -96,31 +96,25 @@ Legacy filename support removed—only `chart-module.iife.js` is used. Ensure al
 
 ## Integration Examples (Inline Quick Reference)
 
-### WordPress Theme (functions.php) – Using CDN + SRI
+### WordPress Plugin Enqueue (CDN + SRI via filter)
 ```php
-function my_theme_enqueue_charts() {
-  wp_enqueue_script(
-    'chart-module',
-    'https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js',
-    [],
-    null,
-    true
-  );
-  wp_enqueue_script(
-    'chart-data',
-    'https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js',
-    ['chart-module'],
-    null,
-    true
-  );
-}
-add_action('wp_enqueue_scripts', 'my_theme_enqueue_charts');
+// Inside your plugin main file
+add_action('wp_enqueue_scripts', function() {
+  wp_enqueue_script('rcm-iife','https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-module.iife.js',[],null,true);
+  wp_enqueue_script('rcm-data','https://cdn.jsdelivr.net/gh/Design-Inspis/chart-repo/chart-data.min.js',['rcm-iife'],null,true);
+});
+add_filter('script_loader_tag', function($tag,$handle,$src){
+  $map=[
+    'rcm-iife' => 'sha256-v2GB+ewovfk9gOteLOl6Er4G6ZwybC7/EhAo18C4jfw=',
+    'rcm-data' => 'sha256-gC3daK6t5Q4VmdRdBFpNB+cwSfFRBRcRQQ3nLRWnkMw=',
+  ];
+  if(!isset($map[$handle])||strpos($tag,' integrity=')!==false) return $tag;
+  return preg_replace('/<script(.*?)src=/','<script$1 integrity="'.esc_attr($map[$handle]).'" crossorigin="anonymous" src=',$tag,1);
+},10,3);
 ```
 ```html
 <div id="chart-root"></div>
-<script>
-  window.ChartModule && window.ChartModule.mount({ selector: '#chart-root' });
-</script>
+<script>window.ChartModule && window.ChartModule.mount({ selector: '#chart-root' });</script>
 ```
 
 ### Plugin Enqueue (CDN)
